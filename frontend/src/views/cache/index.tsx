@@ -11,11 +11,15 @@ const columns = [
   "预加载设置",
   "内存上限",
   "淘汰策略",
-  "是否启用"
+  "是否启用",
+  "查询模板编号",
+  "查询模板版本",
+  "待失效"
 ]
 const actions = [
   "提交校验",
   "启用配置",
+  "刷新缓存",
   "停用配置"
 ]
 const statuses = [
@@ -39,7 +43,7 @@ const stats = [
   }
 ]
 
-type Row = Record<string, string | number | null>
+type Row = Record<string, string | number | boolean | null>
 
 export default function CacheView() {
   const [rows, setRows] = useState<Row[]>([])
@@ -73,10 +77,11 @@ export default function CacheView() {
     try {
       const response = await request(`${ENDPOINT}/${row.id}/actions`, {
         method: 'POST',
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ values: { action, operator: '值班管理员' } }),
       })
-      if (!response.ok) {
-        throw new Error('查询缓存管理动作未生效，请稍后重试')
+      const payload = await response.json()
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.message || '查询缓存管理动作未生效，请稍后重试')
       }
       await reload()
     } catch (error) {
@@ -135,7 +140,13 @@ export default function CacheView() {
         <tbody>
           {rows.map((row) => (
             <tr key={String(row.id)}>
-              {columns.map((column) => <td key={column}>{row[column] ?? '—'}</td>)}
+              {columns.map((column) => (
+                <td key={column}>
+                  {column === "待失效"
+                    ? (row[column] ? "待失效" : "正常")
+                    : (row[column] ?? '—')}
+                </td>
+              ))}
               <td className="row-actions">
                 {actions.map((action) => (
                   <button key={action} className="link" type="button" onClick={() => void runAction(action, row)}>

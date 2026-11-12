@@ -11,11 +11,15 @@ const columns = [
   "响应字段",
   "缓存秒数",
   "分页上限",
-  "消费应用"
+  "消费应用",
+  "查询模板编号",
+  "查询模板版本",
+  "待重新发布"
 ]
 const actions = [
   "提交审批",
   "发布服务",
+  "重新发布服务",
   "停用服务"
 ]
 const statuses = [
@@ -39,7 +43,7 @@ const stats = [
   }
 ]
 
-type Row = Record<string, string | number | null>
+type Row = Record<string, string | number | boolean | null>
 
 export default function ServiceView() {
   const [rows, setRows] = useState<Row[]>([])
@@ -73,10 +77,11 @@ export default function ServiceView() {
     try {
       const response = await request(`${ENDPOINT}/${row.id}/actions`, {
         method: 'POST',
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ values: { action, operator: '值班管理员' } }),
       })
-      if (!response.ok) {
-        throw new Error('数据服务发布动作未生效，请稍后重试')
+      const payload = await response.json()
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.message || '数据服务发布动作未生效，请稍后重试')
       }
       await reload()
     } catch (error) {
@@ -135,7 +140,13 @@ export default function ServiceView() {
         <tbody>
           {rows.map((row) => (
             <tr key={String(row.id)}>
-              {columns.map((column) => <td key={column}>{row[column] ?? '—'}</td>)}
+              {columns.map((column) => (
+                <td key={column}>
+                  {column === "待重新发布"
+                    ? (row[column] ? "待重新发布" : "已同步")
+                    : (row[column] ?? '—')}
+                </td>
+              ))}
               <td className="row-actions">
                 {actions.map((action) => (
                   <button key={action} className="link" type="button" onClick={() => void runAction(action, row)}>
